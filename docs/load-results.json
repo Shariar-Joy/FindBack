@@ -1,0 +1,10 @@
+{
+  "scope": "Local public case-list HTTP smoke load; synthetic demo database",
+  "requests": 100,
+  "concurrency": 10,
+  "median_ms": 74.01,
+  "p95_ms": 298.66,
+  "failed_requests": 0,
+  "error_rate": 0.0,
+  "elapsed_seconds": 1.03
+}

@@ -1,0 +1,55 @@
+# Template only. Review current provider plans before provisioning services.
+services:
+  - type: web
+    name: findback-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.lock.txt && pip install --no-deps .
+    preDeployCommand: alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --no-access-log
+    healthCheckPath: /ready
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: COOKIE_SECURE
+        value: true
+      - key: DATABASE_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: STORAGE_BACKEND
+        value: s3
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: EMAIL_BACKEND
+        value: smtp
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_TLS
+        value: true
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: ALLOW_DEMO_EMAIL
+        value: false
+  - type: worker
+    name: findback-worker
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.lock.txt && pip install --no-deps .
+    startCommand: python -m app.workers.notifications
+    # Attach the same private environment group as the API, including production
+    # database, frontend, storage and SMTP configuration. Do not embed secrets here.

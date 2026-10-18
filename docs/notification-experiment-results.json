@@ -1,0 +1,35 @@
+{
+  "scope": "Local separate FastAPI TestClient harness, PostgreSQL and Mailpit; no network API latency or cloud claims",
+  "requests_per_mode": 10,
+  "recipients_per_request": 5,
+  "sync": {
+    "api": {
+      "median_ms": 61.22,
+      "p95_ms": 101.8
+    },
+    "notification_completion": {
+      "median_ms": 61.22,
+      "p95_ms": 101.8
+    },
+    "failed_requests": 0
+  },
+  "async": {
+    "api": {
+      "median_ms": 7.44,
+      "p95_ms": 35.03
+    },
+    "notification_completion": {
+      "median_ms": 163.24,
+      "p95_ms": 227.22
+    },
+    "failed_requests": 0
+  },
+  "recovery": {
+    "injected_delivery_failures": 1,
+    "backoff_scheduled_seconds": 9.99,
+    "attempts_including_abandoned_claim": 3,
+    "final_status": "SENT",
+    "recovery_processing_ms": 28.16,
+    "duplicate_pending_work": false
+  }
+}

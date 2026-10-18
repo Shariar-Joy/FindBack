@@ -1,0 +1,59 @@
+name: findback-production
+
+x-app: &app
+  image: findback-api:${FINDBACK_RELEASE:-local}
+  build:
+    context: ../../backend
+  env_file: ../../.env.production
+  environment:
+    ENVIRONMENT: production
+    COOKIE_SECURE: "true"
+    STORAGE_BACKEND: s3
+    EMAIL_BACKEND: smtp
+    SMTP_TLS: "true"
+    ALLOW_DEMO_EMAIL: "false"
+    RATE_LIMIT_ENABLED: "true"
+  volumes:
+    - ./certs/rds-ca.pem:/app/certs/rds-ca.pem:ro
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  migrate:
+    <<: *app
+    command: [alembic, upgrade, head]
+    restart: "no"
+    profiles: [tools]
+  api:
+    <<: *app
+    # API has no host port. Only this Docker network can forward to it.
+    command: [uvicorn, "app.main:app", --host, "0.0.0.0", --port, "8000", --no-access-log, --proxy-headers, --forwarded-allow-ips, "*"]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+  worker:
+    <<: *app
+    command: [python, -m, app.workers.notifications]
+  frontend:
+    image: findback-web:${FINDBACK_RELEASE:-local}
+    build:
+      context: ../../frontend
+    environment:
+      ALB_TRUSTED_CIDR_1: ${ALB_TRUSTED_CIDR_1:?Set the first ALB subnet CIDR}
+      ALB_TRUSTED_CIDR_2: ${ALB_TRUSTED_CIDR_2:?Set the second ALB subnet CIDR}
+    ports: ["8080:8080"]
+    depends_on:
+      api: {condition: service_healthy}
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"

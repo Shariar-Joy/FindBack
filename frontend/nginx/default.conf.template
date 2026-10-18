@@ -1,0 +1,52 @@
+map $uri $findback_cache_control {
+    default "no-store";
+    ~^/assets/ "public, max-age=31536000, immutable";
+}
+
+server {
+    listen 8080;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+    client_max_body_size 6m;
+    server_tokens off;
+    # Only the ALB's dedicated subnet CIDRs may supply the client address.
+    set_real_ip_from ${ALB_TRUSTED_CIDR_1};
+    set_real_ip_from ${ALB_TRUSTED_CIDR_2};
+    real_ip_header X-Forwarded-For;
+    real_ip_recursive on;
+    # Request URLs can contain personal search terms: do not log them.
+    access_log off;
+    error_log /dev/stderr warn;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+    add_header Cache-Control $findback_cache_control always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.tile.openstreetmap.org; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+
+    location = /nginx-health {
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    location /api/ {
+        proxy_pass http://api:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        # Overwrite incoming headers before the isolated API trusts this proxy.
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_no_cache 1;
+        proxy_cache_bypass 1;
+    }
+
+    location /assets/ {
+        try_files $uri =404;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

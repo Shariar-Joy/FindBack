@@ -1,0 +1,26 @@
+name: Bug report
+description: Report a reproducible problem using fictional data.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials or personal information. Report vulnerabilities through SECURITY.md.
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, browser, Python/Node versions, and local or cloud deployment.
+    validations:
+      required: true

@@ -1,0 +1,51 @@
+name: findback
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: findback
+      POSTGRES_PASSWORD: findback_local
+      POSTGRES_DB: findback
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U findback -d findback"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports: ["127.0.0.1:8025:8025", "127.0.0.1:1025:1025"]
+  migrate:
+    build: ./backend
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://findback:findback_local@db:5432/findback
+    depends_on:
+      db: {condition: service_healthy}
+  api:
+    build: ./backend
+    ports: ["127.0.0.1:8000:8000"]
+    environment: &app_env
+      DATABASE_URL: postgresql+psycopg://findback:findback_local@db:5432/findback
+      ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000
+      STORAGE_PATH: /app/storage
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      ALLOW_DEMO_EMAIL: ${ALLOW_DEMO_EMAIL:-false}
+    volumes: ["case_media:/app/storage"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      mailpit: {condition: service_started}
+  worker:
+    build: ./backend
+    command: ["python", "-m", "app.workers.notifications"]
+    environment: *app_env
+    volumes: ["case_media:/app/storage"]
+    restart: unless-stopped
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      mailpit: {condition: service_started}
+volumes:
+  postgres_data:
+  case_media:
